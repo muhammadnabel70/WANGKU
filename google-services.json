@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "274618812279",
+    "project_id": "wangku-f3543",
+    "storage_bucket": "wangku-f3543.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:274618812279:android:987b468460c6edbf4e4372",
+        "android_client_info": {
+          "package_name": "com.example.wangku"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "274618812279-nmmot8sb1fosjrocb8de406b63vitk34.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.wangku",
+            "certificate_hash": "3e44c98ba6c522b50de421475305277bcfebb664"
+          }
+        },
+        {
+          "client_id": "274618812279-qioo010vtu64usibo7stoka2qldks24a.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAh67nMCJgOT3cmMJGVsgRXgFppBmFszgs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "274618812279-qioo010vtu64usibo7stoka2qldks24a.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
