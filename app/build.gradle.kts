@@ -64,6 +64,9 @@ dependencies {
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
 
+    // Circle ImageView
+    implementation("de.hdodenhof:circleimageview:3.1.0")
+
     // Gunakan variabel dalam string dengan ${}
     implementation("androidx.navigation:navigation-fragment-ktx:$nav_version")
     implementation("androidx.navigation:navigation-ui-ktx:$nav_version")
@@ -93,5 +96,10 @@ dependencies {
     implementation(libs.firebase.auth)          // <-- 3. BARIS BARU DITAMBAHKAN
     implementation("com.google.android.gms:play-services-auth:21.2.0")
     implementation(libs.firebase.firestore)
+    // ---------------------------------
+
+    // --- DEPENDENSI GLIDE ---
+    implementation("com.github.bumptech.glide:glide:4.16.0")
+    ksp("com.github.bumptech.glide:compiler:4.16.0")
     // ---------------------------------
 }

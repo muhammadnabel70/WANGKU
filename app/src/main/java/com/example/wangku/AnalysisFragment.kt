@@ -6,6 +6,9 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
@@ -29,10 +32,8 @@ class AnalysisFragment : Fragment() {
     private var _binding: FragmentAnalysisBinding? = null
     private val binding get() = _binding!!
 
-    // [PERUBAHAN DI SINI]
     private val analysisViewModel: AnalysisViewModel by viewModels {
         val app = (activity?.application as WangKuApplication)
-        // Teruskan 'app.firebaseAuth' ke Factory
         AnalysisViewModelFactory(app.repository, app.firebaseAuth)
     }
 
@@ -51,6 +52,15 @@ class AnalysisFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        ViewCompat.setOnApplyWindowInsetsListener(binding.analysisContainer) { v, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.updatePadding(
+                top = systemBars.top,
+                bottom = systemBars.bottom
+            )
+            insets
+        }
 
         setupChartStyle()
         setupFilterChips()
@@ -71,7 +81,7 @@ class AnalysisFragment : Fragment() {
                 R.id.chip_monthly -> {
                     analysisViewModel.setFilter(AnalysisFilterType.MONTHLY)
                 }
-                R.id.chip_year -> {
+                R.id.chip_yearly -> { // FIX: Changed from chip_year
                     analysisViewModel.setFilter(AnalysisFilterType.YEARLY)
                 }
             }
@@ -85,50 +95,40 @@ class AnalysisFragment : Fragment() {
 
         // --- Observer untuk Header DAN Total Bawah ---
 
-        // Observer untuk Total Balance (di Header)
         viewLifecycleOwner.lifecycleScope.launch {
             analysisViewModel.totalBalance.collect { balance ->
                 binding.headerLayout.tvTotalBalanceAmount.text = formatCurrency(balance)
             }
         }
 
-        // Observer untuk Total Expense (Header & Bawah)
         viewLifecycleOwner.lifecycleScope.launch {
             analysisViewModel.totalExpense.collect { expense ->
                 val expenseValue = expense ?: 0.0
                 val formattedExpense = formatCurrency(expenseValue)
 
-                // Set Header Expense
                 binding.headerLayout.tvTotalExpenseAmount.text = "-${formattedExpense}"
-                // Set Total Bawah Expense (tanpa minus)
-                binding.tvBottomExpenseTotal.text = formattedExpense
+                binding.tvTotalExpense.text = formattedExpense // FIX: Changed from tvBottomExpenseTotal
             }
         }
 
-        // Observer untuk Total Income (HANYA Bawah)
         viewLifecycleOwner.lifecycleScope.launch {
             analysisViewModel.totalIncome.collect { income ->
                 val incomeValue = income ?: 0.0
-                // Set Total Bawah Income
-                binding.tvBottomIncomeTotal.text = formatCurrency(incomeValue)
+                binding.tvTotalIncome.text = formatCurrency(incomeValue) // FIX: Changed from tvBottomIncomeTotal
             }
         }
 
-        // --- Observer untuk Grafik ---
         viewLifecycleOwner.lifecycleScope.launch {
             analysisViewModel.chartData.collect { data ->
                 if (data.isNotEmpty()) {
                     updateGroupedBarChart(data)
                 } else {
-                    binding.barChart.clear() // Kosongkan grafik jika tidak ada data
+                    binding.barChart.clear()
                     binding.barChart.invalidate()
                 }
             }
         }
     }
-
-    // ... (Sisa file SAMA PERSIS seperti sebelumnya) ...
-    // ... (setupChartStyle, updateGroupedBarChart, formatChartLabel, formatCurrency, onDestroyView) ...
 
     private fun setupChartStyle() {
         binding.barChart.apply {
@@ -171,11 +171,11 @@ class AnalysisFragment : Fragment() {
             labels.add(formatChartLabel(summary.label))
         }
 
-        val incomeColor = ContextCompat.getColor(requireContext(), R.color.brand_green)
+        val incomeColor = ContextCompat.getColor(requireContext(), R.color.blue_income)
         val incomeDataSet = BarDataSet(incomeEntries, "Income")
         incomeDataSet.color = incomeColor
 
-        val expenseColor = Color.RED // Ganti ke @color/brand_red jika ada
+        val expenseColor = Color.RED
         val expenseDataSet = BarDataSet(expenseEntries, "Expense")
         expenseDataSet.color = expenseColor
 
@@ -199,27 +199,23 @@ class AnalysisFragment : Fragment() {
     private fun formatChartLabel(dbLabel: String): String {
         return try {
             when {
-                // Format DAILY: "2025-11-12" -> "12/11"
                 dbLabel.matches(Regex("^\\d{4}-\\d{2}-\\d{2}$")) -> {
                     val dbFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
                     val displayFormat = SimpleDateFormat("dd/MM", Locale.getDefault())
                     displayFormat.format(dbFormat.parse(dbLabel)!!)
                 }
-                // Format WEEKLY: "2025-W46" -> "W46"
                 dbLabel.contains("-W") -> {
                     dbLabel.split("-W").last()
                 }
-                // Format MONTHLY: "2025-11" -> "Nov 25"
                 dbLabel.matches(Regex("^\\d{4}-\\d{2}$")) -> {
                     val dbFormat = SimpleDateFormat("yyyy-MM", Locale.getDefault())
                     val displayFormat = SimpleDateFormat("MMM yy", Locale.getDefault())
                     displayFormat.format(dbFormat.parse(dbLabel)!!)
                 }
-                // Format YEARLY: "2025" -> "2025"
                 else -> dbLabel
             }
         } catch (e: Exception) {
-            dbLabel // Jika gagal, tampilkan apa adanya
+            dbLabel
         }
     }
 

@@ -20,26 +20,21 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:tint="#007BFF"
-        tools:srcCompat="@drawable/ic_launcher_background" /> <TextView
-    android:id="@+id/tv_title"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:layout_marginStart="16dp"
-    android:textColor="@android:color/black"
-    android:textSize="16sp"
-    android:textStyle="bold"
-    app:layout_constraintStart_toEndOf="@id/iv_category_icon"
-    app:layout_constraintTop_toTopOf="@id/iv_category_icon"
-    tools:text="Makanan" />
+        tools:srcCompat="@drawable/ic_launcher_background" />
+
 
     <TextView
-        android:id="@+id/tv_date"
+        android:id="@+id/tv_title"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textSize="12sp"
-        app:layout_constraintStart_toStartOf="@id/tv_title"
-        app:layout_constraintTop_toBottomOf="@id/tv_title"
-        tools:text="27 April 2025" />
+        android:layout_marginStart="20dp"
+        android:layout_marginTop="12dp"
+        android:textColor="@android:color/black"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        app:layout_constraintStart_toEndOf="@id/iv_category_icon"
+        app:layout_constraintTop_toTopOf="@id/iv_category_icon"
+        tools:text="Makanan" />
 
     <View
         android:id="@+id/divider1"

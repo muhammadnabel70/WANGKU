@@ -6,24 +6,36 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.EditText
 import android.widget.Toast
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.updatePadding
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import com.example.wangku.* // Import semua model, enum, dan Application class
 import com.example.wangku.databinding.FragmentCategoriesBinding
-import com.google.android.material.dialog.MaterialAlertDialogBuilder // <-- Import Modern
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.launch
+import java.text.NumberFormat
 import java.text.SimpleDateFormat
-import java.util.* class CategoriesFragment : Fragment() {
+import java.util.*
+
+class CategoriesFragment : Fragment() {
 
     private var _binding: FragmentCategoriesBinding? = null
     private val binding get() = _binding!!
 
     private val categoriesViewModel: CategoriesViewModel by viewModels {
-        CategoriesViewModelFactory((activity?.application as WangKuApplication).repository)
+        val app = (activity?.application as WangKuApplication)
+        CategoriesViewModelFactory(app.repository, FirebaseAuth.getInstance())
     }
 
     private lateinit var expenseAdapter: CategoryAdapter
     private lateinit var incomeAdapter: CategoryAdapter
+    private val currencyFormatter: NumberFormat =
+        NumberFormat.getCurrencyInstance(Locale.forLanguageTag("id-ID"))
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -37,8 +49,37 @@ import java.util.* class CategoriesFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        // Menangani inset (area status bar & navigation bar) secara terprogram
+        ViewCompat.setOnApplyWindowInsetsListener(binding.categoriesContainer) { v, insets ->
+            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            v.updatePadding(
+                top = systemBars.top,
+                bottom = systemBars.bottom
+            )
+            insets
+        }
+
         setupAdapters()
         setupRecyclerViews()
+        observeViewModel() // Panggil observer
+    }
+
+    /**
+     * [BARU] Meng-observe data dari ViewModel dan memperbarui UI.
+     */
+    private fun observeViewModel() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            categoriesViewModel.totalBalance.collect { balance ->
+                binding.headerLayout.tvTotalBalanceAmount.text = formatCurrency(balance)
+            }
+        }
+        viewLifecycleOwner.lifecycleScope.launch {
+            categoriesViewModel.totalExpense.collect { expense ->
+                val expenseValue = expense ?: 0.0
+                binding.headerLayout.tvTotalExpenseAmount.text = "-${formatCurrency(expenseValue)}"
+            }
+        }
     }
 
     /**
@@ -155,6 +196,13 @@ import java.util.* class CategoriesFragment : Fragment() {
         categoriesViewModel.insertTransaction(newTransaction)
 
         Toast.makeText(requireContext(), "Transaction Saved!", Toast.LENGTH_SHORT).show()
+    }
+
+    /**
+     * Fungsi helper untuk format mata uang
+     */
+    private fun formatCurrency(amount: Double): String {
+        return currencyFormatter.format(amount).replace(",00", "")
     }
 
     override fun onDestroyView() {

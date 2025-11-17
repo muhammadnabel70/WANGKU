@@ -1,9 +1,12 @@
 package com.example.wangku.ui.home // Sesuaikan package Anda
 
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.AnimationUtils
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
@@ -35,7 +38,10 @@ class HomeFragment : Fragment() {
     }
 
     private val currencyFormatter: NumberFormat =
-        NumberFormat.getCurrencyInstance(Locale("in", "ID"))
+        NumberFormat.getCurrencyInstance(Locale.forLanguageTag("id-ID"))
+
+    private val animationHandler = Handler(Looper.getMainLooper())
+    private lateinit var shakeAnimation: Runnable
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -54,7 +60,20 @@ class HomeFragment : Fragment() {
         setupRecyclerView()
         observeViewModel()
         setupFilterChips()
+        setupLogoAnimation()
     }
+
+    private fun setupLogoAnimation() {
+        val shake = AnimationUtils.loadAnimation(context, R.anim.logo_shake)
+
+        shakeAnimation = Runnable {
+            binding.ivLogo.startAnimation(shake)
+            animationHandler.postDelayed(shakeAnimation, 2000) // Ulangi setiap 2 detik
+        }
+
+        animationHandler.post(shakeAnimation) // Mulai animasi pertama kali
+    }
+
 
     /**
      * Mengambil info pengguna dari Firebase dan menampilkannya.
@@ -118,10 +137,10 @@ class HomeFragment : Fragment() {
 
         // 1. Observer untuk DAFTAR TRANSAKSI
         viewLifecycleOwner.lifecycleScope.launch {
-            homeViewModel.allTransactions.collect { transactionsList ->
+            homeViewModel.allTransactions.collect { dataItems ->
 
                 // [LOGIKA EMPTY STATE BARU]
-                if (transactionsList.isEmpty()) {
+                if (dataItems.isEmpty()) {
                     binding.rvTransactions.visibility = View.GONE
                     binding.tvEmptyState.visibility = View.VISIBLE
                 } else {
@@ -130,7 +149,7 @@ class HomeFragment : Fragment() {
                 }
 
                 // Kirim daftar (walaupun kosong) ke adapter
-                transactionAdapter.submitList(transactionsList)
+                transactionAdapter.submitList(dataItems)
             }
         }
 
@@ -189,5 +208,6 @@ class HomeFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+        animationHandler.removeCallbacks(shakeAnimation) // Hentikan animasi saat fragment dihancurkan
     }
 }

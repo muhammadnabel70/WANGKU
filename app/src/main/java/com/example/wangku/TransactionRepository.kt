@@ -37,9 +37,10 @@ class TransactionRepository(
             val documentRef = firestore.collection("users").document(userId)
                 .collection("transactions").document() // Buat ID unik
 
-            // Set ID dan userId di objek transaksi
+            // Set ID, userId, dan timestamp di objek transaksi
             transaction.id = documentRef.id // Ambil ID unik dari Firestore
             transaction.userId = userId
+            transaction.timestamp = System.currentTimeMillis() // Selalu set timestamp baru saat insert
 
             // Simpan ke Firestore (Cloud)
             documentRef.set(transaction).await()
@@ -161,6 +162,12 @@ class TransactionRepository(
                         try {
                             val transaction = docChange.document.toObject<Transaction>()
                             transaction.id = docChange.document.id
+
+                            // [PERBAIKAN] Jika data dari Firestore tidak punya timestamp,
+                            // setel ke waktu sinkronisasi saat ini.
+                            if (transaction.timestamp == 0L) {
+                                transaction.timestamp = System.currentTimeMillis()
+                            }
 
                             when (docChange.type) {
                                 // Data baru atau berubah di cloud

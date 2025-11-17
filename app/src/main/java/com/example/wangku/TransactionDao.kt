@@ -26,10 +26,10 @@ interface TransactionDao {
 
     // --- Query untuk Home ---
 
-    @Query("SELECT * FROM transactions WHERE userId = :userId ORDER BY id DESC")
+    @Query("SELECT * FROM transactions WHERE userId = :userId ORDER BY date DESC, timestamp DESC")
     fun getAllTransactions(userId: String): Flow<List<Transaction>>
 
-    @Query("SELECT * FROM transactions WHERE date BETWEEN :startDate AND :endDate AND userId = :userId ORDER BY id DESC")
+    @Query("SELECT * FROM transactions WHERE date BETWEEN :startDate AND :endDate AND userId = :userId ORDER BY date DESC, timestamp DESC")
     fun getTransactionsBetweenDates(startDate: String, endDate: String, userId: String): Flow<List<Transaction>>
 
     // --- Query untuk Saldo ---

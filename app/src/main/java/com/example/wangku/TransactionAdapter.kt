@@ -3,80 +3,112 @@ package com.example.wangku // Sesuaikan package Anda
 import android.content.Context
 import android.graphics.Color
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
+import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.example.wangku.databinding.ListItemTransactionBinding
+import com.example.wangku.ui.home.DataItem
+import com.example.wangku.ui.home.DataItem.DateHeaderItem
+import com.example.wangku.ui.home.DataItem.TransactionItem
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.lang.Exception
 
-/**
- * [BERUBAH] Adapter sekarang menerima lambda 'onItemLongClick'
- */
 class TransactionAdapter(
     private val onItemLongClick: (Transaction) -> Unit // Lambda untuk long click
-) : ListAdapter<Transaction, TransactionAdapter.TransactionViewHolder>(TransactionDiffCallback()) {
+) : ListAdapter<DataItem, RecyclerView.ViewHolder>(DataItemDiffCallback()) {
 
-    /**
-     * ViewHolder: Menyimpan referensi ke view di dalam setiap item
-     */
-    inner class TransactionViewHolder(val binding: ListItemTransactionBinding) :
-        RecyclerView.ViewHolder(binding.root)
-
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): TransactionViewHolder {
-        val binding = ListItemTransactionBinding.inflate(
-            LayoutInflater.from(parent.context),
-            parent,
-            false
-        )
-        return TransactionViewHolder(binding)
+    companion object {
+        private const val VIEW_TYPE_HEADER = 0
+        private const val VIEW_TYPE_ITEM = 1
     }
 
-    override fun onBindViewHolder(holder: TransactionViewHolder, position: Int) {
-        val transaction = getItem(position)
-
-        // [BARU] Tambahkan listener 'setOnLongClickListener'
-        holder.itemView.setOnLongClickListener {
-            onItemLongClick(transaction) // Panggil lambda
-            true // 'true' berarti kita sudah menangani event ini
+    override fun getItemViewType(position: Int): Int {
+        return when (getItem(position)) {
+            is DateHeaderItem -> VIEW_TYPE_HEADER
+            is TransactionItem -> VIEW_TYPE_ITEM
         }
+    }
 
-        holder.binding.apply {
-            tvTitle.text = transaction.title
-            tvDate.text = formatDisplayDate(transaction.date) // Format tanggal
-            tvCategoryName.text = transaction.category
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+        return when (viewType) {
+            VIEW_TYPE_HEADER -> {
+                val view = LayoutInflater.from(parent.context)
+                    .inflate(R.layout.list_item_date_header, parent, false)
+                DateHeaderViewHolder(view)
+            }
+            VIEW_TYPE_ITEM -> {
+                val binding = ListItemTransactionBinding.inflate(
+                    LayoutInflater.from(parent.context),
+                    parent,
+                    false
+                )
+                TransactionViewHolder(binding, onItemLongClick) // Pass the long click listener
+            }
+            else -> throw IllegalArgumentException("Unknown viewType $viewType")
+        }
+    }
 
-            ivCategoryIcon.setImageResource(
-                getDrawableIdByName(holder.itemView.context, transaction.iconName)
-            )
-
-            // Atur jumlah dan warnanya berdasarkan tipe transaksi
-            if (transaction.type == TransactionType.INCOME) {
-                tvAmount.text = "Rp${transaction.amount}" // TODO: Format mata uang
-                val incomeColor = ContextCompat.getColor(holder.itemView.context, R.color.brand_green)
-                tvAmount.setTextColor(incomeColor)
-            } else {
-                tvAmount.text = "-Rp${transaction.amount}" // TODO: Format mata uang
-                tvAmount.setTextColor(Color.RED) // Sebaiknya definisikan di colors.xml
+    override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+        when (holder) {
+            is DateHeaderViewHolder -> {
+                val dateHeaderItem = getItem(position) as DateHeaderItem
+                holder.bind(dateHeaderItem.date)
+            }
+            is TransactionViewHolder -> {
+                val transactionItem = getItem(position) as TransactionItem
+                holder.bind(transactionItem.transaction)
             }
         }
     }
 
     /**
-     * Helper function untuk format tanggal dari "yyyy-MM-dd"
-     * menjadi "dd MMM yyyy" (misal: "13 Nov 2025")
+     * ViewHolder untuk menampilkan transaksi individual.
      */
-    private fun formatDisplayDate(dbDate: String): String {
-        return try {
-            val dbFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-            val displayFormat = SimpleDateFormat("dd MMM yyyy", Locale.getDefault())
-            val date = dbFormat.parse(dbDate)
-            displayFormat.format(date!!)
-        } catch (e: Exception) {
-            dbDate // Jika parsing gagal, tampilkan apa adanya
+    inner class TransactionViewHolder(
+        val binding: ListItemTransactionBinding,
+        private val onItemLongClick: (Transaction) -> Unit
+    ) : RecyclerView.ViewHolder(binding.root) {
+
+        fun bind(transaction: Transaction) {
+            itemView.setOnLongClickListener {
+                onItemLongClick(transaction)
+                true
+            }
+
+            binding.apply {
+                tvTitle.text = transaction.title
+                // tvDate.text = formatDisplayDate(transaction.date) // Date is now in header
+                tvCategoryName.text = transaction.category
+
+                ivCategoryIcon.setImageResource(
+                    getDrawableIdByName(itemView.context, transaction.iconName)
+                )
+
+                if (transaction.type == TransactionType.INCOME) {
+                    tvAmount.text = "Rp${transaction.amount}" // TODO: Format mata uang
+                    val incomeColor = ContextCompat.getColor(itemView.context, R.color.blue_income)
+                    tvAmount.setTextColor(incomeColor)
+                } else {
+                    tvAmount.text = "-Rp${transaction.amount}" // TODO: Format mata uang
+                    tvAmount.setTextColor(Color.RED) // Sebaiknya definisikan di colors.xml
+                }
+            }
+        }
+    }
+
+    /**
+     * ViewHolder untuk menampilkan header tanggal.
+     */
+    class DateHeaderViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+        private val tvDateHeader: TextView = view.findViewById(R.id.tv_date_header)
+
+        fun bind(date: String) {
+            tvDateHeader.text = date
         }
     }
 
@@ -97,12 +129,16 @@ class TransactionAdapter(
  * DiffUtil: Menghitung perbedaan data agar RecyclerView tahu
  * item mana yang berubah, ditambah, atau dihapus (lebih efisien).
  */
-class TransactionDiffCallback : DiffUtil.ItemCallback<Transaction>() {
-    override fun areItemsTheSame(oldItem: Transaction, newItem: Transaction): Boolean {
-        return oldItem.id == newItem.id // Cek berdasarkan ID unik
+class DataItemDiffCallback : DiffUtil.ItemCallback<DataItem>() {
+    override fun areItemsTheSame(oldItem: DataItem, newItem: DataItem): Boolean {
+        return when {
+            oldItem is TransactionItem && newItem is TransactionItem -> oldItem.transaction.id == newItem.transaction.id
+            oldItem is DateHeaderItem && newItem is DateHeaderItem -> oldItem.date == newItem.date
+            else -> false
+        }
     }
 
-    override fun areContentsTheSame(oldItem: Transaction, newItem: Transaction): Boolean {
-        return oldItem == newItem // Cek semua field
+    override fun areContentsTheSame(oldItem: DataItem, newItem: DataItem): Boolean {
+        return oldItem == newItem // Data classes handle content equality automatically
     }
 }

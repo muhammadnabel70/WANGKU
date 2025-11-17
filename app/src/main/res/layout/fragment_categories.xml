@@ -2,9 +2,11 @@
 <androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/categories_container" 
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
+    android:layout_height="1000dp"
     android:background="@color/brand_green"
+    android:paddingTop="30dp"
     tools:context=".ui.categories.CategoriesFragment">
 
     <include
@@ -22,7 +24,7 @@
         android:background="@drawable/bg_rounded_card"
         android:orientation="vertical"
         android:paddingTop="24dp"
-        android:paddingBottom="24dp"
+        android:paddingBottom="0dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintTop_toBottomOf="@id/header_layout">
 

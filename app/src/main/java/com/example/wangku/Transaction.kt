@@ -32,7 +32,10 @@ data class Transaction(
     var type: TransactionType = TransactionType.EXPENSE,
 
     @ColumnInfo(name = "icon_name")
-    var iconName: String = ""
+    var iconName: String = "",
+
+    @ColumnInfo(name = "timestamp") // Menambahkan kolom timestamp
+    var timestamp: Long = 0L // [PERBAIKAN] Default ke 0L, bukan System.currentTimeMillis()
 )
 // 2. HAPUS SELURUH BLOK FUNGSI getId() DARI SINI
 /*

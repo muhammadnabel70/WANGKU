@@ -6,14 +6,6 @@
         <entry key="Firebase Crashlytics">
           <value>
             <InsightsFilterSettings>
-              <option name="connection">
-                <ConnectionSetting>
-                  <option name="appId" value="com.example.wangku" />
-                  <option name="mobileSdkAppId" value="1:274618812279:android:987b468460c6edbf4e4372" />
-                  <option name="projectId" value="wangku-f3543" />
-                  <option name="projectNumber" value="274618812279" />
-                </ConnectionSetting>
-              </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />
               <option name="timeIntervalDays" value="THIRTY_DAYS" />
               <option name="visibilityType" value="ALL" />

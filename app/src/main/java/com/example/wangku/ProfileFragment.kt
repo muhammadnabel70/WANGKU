@@ -9,14 +9,16 @@ import android.widget.EditText
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.navigation.fragment.findNavController
+import com.bumptech.glide.Glide // [BARU] Import Glide
 import com.example.wangku.LoginActivity
 import com.example.wangku.R
-import com.example.wangku.SettingsActivity // <-- IMPORT BARU
+import com.example.wangku.SettingsActivity
 import com.example.wangku.WangKuApplication
 import com.example.wangku.databinding.FragmentProfileBinding
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
-import com.google.android.material.dialog.MaterialAlertDialogBuilder // <-- IMPORT MODERN
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.UserProfileChangeRequest
 
@@ -25,9 +27,6 @@ class ProfileFragment : Fragment() {
     private var _binding: FragmentProfileBinding? = null
     private val binding get() = _binding!!
 
-    // ViewModel TIDAK DIPERLUKAN LAGI di sini, kecuali untuk logout
-    // (Tapi kita bisa panggil repo langsung untuk logout)
-    // Mari kita biarkan untuk logout
     private val profileViewModel: ProfileViewModel by viewModels {
         ProfileViewModelFactory((activity?.application as WangKuApplication).repository)
     }
@@ -41,6 +40,11 @@ class ProfileFragment : Fragment() {
     ): View {
         _binding = FragmentProfileBinding.inflate(inflater, container, false)
         firebaseAuth = FirebaseAuth.getInstance()
+
+        binding.toolbarProfile.setNavigationOnClickListener {
+            findNavController().navigateUp() // Kembali ke fragment sebelumnya
+        }
+
         return binding.root
     }
 
@@ -59,10 +63,17 @@ class ProfileFragment : Fragment() {
             showEditNameDialog()
         }
 
-        // [BERUBAH] Tombol Setting sekarang pindah ke SettingsActivity
         binding.btnSetting.setOnClickListener {
             val intent = Intent(activity, SettingsActivity::class.java)
             startActivity(intent)
+        }
+
+        binding.btnSecurity.setOnClickListener {
+            Toast.makeText(requireContext(), "Fitur Security Segera Hadir", Toast.LENGTH_SHORT).show()
+        }
+
+        binding.btnHelp.setOnClickListener {
+            Toast.makeText(requireContext(), "Fitur Help Segera Hadir", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -71,6 +82,15 @@ class ProfileFragment : Fragment() {
         if (user != null) {
             binding.tvProfileName.text = user.displayName ?: "User"
             binding.tvProfileId.text = user.email
+
+            // [PERBAIKAN] Load foto profil jika URL tersedia
+            if (user.photoUrl != null) {
+                Glide.with(this)
+                    .load(user.photoUrl)
+                    .placeholder(R.drawable.ic_profile) // Gambar default saat loading
+                    .error(R.drawable.ic_profile)       // Gambar default jika gagal load
+                    .into(binding.ivProfilePicture)
+            }
         } else {
             binding.tvProfileName.text = "Guest"
             binding.tvProfileId.text = ""
@@ -80,7 +100,6 @@ class ProfileFragment : Fragment() {
     private fun showEditNameDialog() {
         val user = firebaseAuth.currentUser ?: return
 
-        // [PERBAIKAN UI] Gunakan MaterialAlertDialogBuilder
         val builder = MaterialAlertDialogBuilder(requireContext())
         builder.setTitle("Edit Name")
 
@@ -106,15 +125,23 @@ class ProfileFragment : Fragment() {
     }
 
     private fun updateProfileName(newName: String) {
-        // ... (Kode updateProfileName Anda tidak berubah)
+        val user = firebaseAuth.currentUser ?: return
+        val profileUpdates = UserProfileChangeRequest.Builder()
+            .setDisplayName(newName)
+            .build()
+
+        user.updateProfile(profileUpdates)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    Toast.makeText(requireContext(), "Profile name updated!", Toast.LENGTH_SHORT).show()
+                    binding.tvProfileName.text = newName
+                } else {
+                    Toast.makeText(requireContext(), "Failed to update name: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
     }
 
-    /**
-     * [PERBAIKAN UI] Dialog logout sekarang HANYA untuk logout
-     * dan menggunakan style MODERN.
-     */
     private fun showLogoutConfirmationDialog() {
-        // [PERBAIKAN UI] Gunakan MaterialAlertDialogBuilder
         MaterialAlertDialogBuilder(requireContext())
             .setTitle("Logout")
             .setMessage("Apakah Anda yakin ingin logout?")
@@ -128,25 +155,14 @@ class ProfileFragment : Fragment() {
             .show()
     }
 
-    // [DIHAPUS] Fungsi showDeleteDataConfirmationDialog()
-    // sudah dipindah ke SettingsActivity.kt
-
-    /**
-     * [PERBAIKAN BUG] Fungsi ini HANYA logout, tidak menghapus data.
-     */
     private fun performLogout() {
-        // 1. Hapus sesi login Firebase
         firebaseAuth.signOut()
-
-        // 2. Hapus sesi login Google (WAJIB agar bisa ganti akun)
         GoogleSignIn.getClient(requireActivity(), GoogleSignInOptions.DEFAULT_SIGN_IN).signOut()
 
-        // 3. Pindah kembali ke LoginActivity
         val intent = Intent(activity, LoginActivity::class.java)
         intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         startActivity(intent)
 
-        // 4. Tutup MainActivity
         activity?.finish()
     }
 

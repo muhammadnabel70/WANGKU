@@ -6,6 +6,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/brand_green"
+    android:paddingTop="30dp"
     tools:context=".ui.home.HomeFragment">
 
     <TextView
@@ -14,7 +15,7 @@
         android:layout_height="wrap_content"
         android:layout_marginStart="24dp"
         android:layout_marginTop="24dp"
-        android:text="Hai, Selamat Datang"
+        android:text="Hai, Welcome"
         android:textColor="@color/white"
         android:textSize="18sp"
         app:layout_constraintStart_toStartOf="parent"
@@ -30,6 +31,19 @@
         android:textStyle="bold"
         app:layout_constraintStart_toStartOf="@id/tv_greeting"
         app:layout_constraintTop_toBottomOf="@id/tv_greeting" />
+
+    <!-- [BARU] ImageView untuk Logo -->
+
+    <ImageView
+        android:id="@+id/iv_logo"
+        android:layout_width="42dp"
+        android:layout_height="42dp"
+        android:layout_marginTop="32dp"
+        android:layout_marginEnd="32dp"
+        android:contentDescription="Logo Wangku"
+        android:src="@drawable/vectorlogo"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/card_total_balance"
@@ -53,7 +67,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Total Saldo"
+                android:text="Total Balance"
                 android:textSize="16sp" />
 
             <TextView
@@ -94,7 +108,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Rp0"
-                android:textColor="@color/brand_green"
+                android:textColor="@color/blue_income"
                 android:textStyle="bold"/>
         </LinearLayout>
 
@@ -125,7 +139,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Rp0"
-                android:textColor="#FF0000"
+                android:textColor="@color/red_expense"
                 android:textStyle="bold"/>
         </LinearLayout>
 
@@ -138,7 +152,7 @@
         android:layout_marginTop="24dp"
         android:background="@drawable/bg_rounded_card"
         android:orientation="vertical"
-        android:paddingTop="16dp"
+        android:paddingTop="24dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintTop_toBottomOf="@id/card_income">
 
