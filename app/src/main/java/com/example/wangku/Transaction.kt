@@ -34,16 +34,12 @@ data class Transaction(
     @ColumnInfo(name = "icon_name")
     var iconName: String = "",
 
-    @ColumnInfo(name = "timestamp") // Menambahkan kolom timestamp
-    var timestamp: Long = 0L // [PERBAIKAN] Default ke 0L, bukan System.currentTimeMillis()
+    @ColumnInfo(name = "timestamp")
+    var timestamp: Long = 0L,
+
+    @ColumnInfo(name = "note") // [BARU] Kolom untuk pesan/catatan
+    var note: String = "" // Nilai default string kosong
 )
-// 2. HAPUS SELURUH BLOK FUNGSI getId() DARI SINI
-/*
-{
-    @Exclude
-    fun getId(): String = id
-}
-*/
 
 enum class TransactionType {
     INCOME, EXPENSE

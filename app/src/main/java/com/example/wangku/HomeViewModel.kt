@@ -12,7 +12,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -21,7 +20,6 @@ import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
-// Sealed class untuk merepresentasikan item di RecyclerView (transaksi atau header tanggal)
 sealed class DataItem {
     data class TransactionItem(val transaction: Transaction) : DataItem()
     data class DateHeaderItem(val date: String) : DataItem()
@@ -33,16 +31,12 @@ class HomeViewModel(
     private val firebaseAuth: FirebaseAuth
 ) : ViewModel() {
 
-    private val userId = firebaseAuth.currentUser?.uid
+    // [PERBAIKAN] Gunakan "GUEST_USER" jika tidak ada pengguna yang login
+    private val userId = firebaseAuth.currentUser?.uid ?: "GUEST_USER"
 
     // --- Data Saldo ---
-    val totalIncome: Flow<Double?> = if (userId == null) emptyFlow() else {
-        repository.getTotalIncome(userId)
-    }
-
-    val totalExpense: Flow<Double?> = if (userId == null) emptyFlow() else {
-        repository.getTotalExpense(userId)
-    }
+    val totalIncome: Flow<Double?> = repository.getTotalIncome(userId)
+    val totalExpense: Flow<Double?> = repository.getTotalExpense(userId)
 
     val totalBalance: Flow<Double> = combine(totalIncome, totalExpense) { income, expense ->
         (income ?: 0.0) - (expense ?: 0.0)
@@ -54,78 +48,61 @@ class HomeViewModel(
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
     private val displayDateFormat = SimpleDateFormat("dd MMMM yyyy", Locale.forLanguageTag("id-ID"))
 
-
     fun setFilter(filterType: FilterType) {
         _filterState.value = filterType
     }
 
-    /**
-     * Daftar transaksi yang reaktif terhadap filter, diurutkan terbaru dan dengan header tanggal
-     */
     val allTransactions: Flow<List<DataItem>> = _filterState.flatMapLatest { filter ->
-        if (userId == null) {
-            emptyFlow() // Jika tidak ada user, kembalikan daftar kosong
-        } else {
-            val transactionsFlow = when (filter) {
-                FilterType.DAILY -> {
-                    val today = dateFormat.format(Date())
-                    repository.getTransactionsBetweenDates(today, today, userId)
-                }
-                FilterType.WEEKLY -> {
-                    val calendar = Calendar.getInstance()
-                    val endDate = dateFormat.format(calendar.time)
-                    calendar.add(Calendar.DAY_OF_YEAR, -6)
-                    val startDate = dateFormat.format(calendar.time)
-                    repository.getTransactionsBetweenDates(startDate, endDate, userId)
-                }
-                FilterType.MONTHLY_ALL -> {
-                    repository.getAllTransactions(userId)
-                }
+        val transactionsFlow = when (filter) {
+            FilterType.DAILY -> {
+                val today = dateFormat.format(Date())
+                repository.getTransactionsBetweenDates(today, today, userId)
             }
-            // Map transaksi ke DataItem dengan header tanggal
-            transactionsFlow.map { transactionsList ->
-                val items = mutableListOf<DataItem>()
-                var lastDate: String? = null
-                transactionsList.forEach { transaction ->
-                    try {
-                        // [PERBAIKAN] Parse string tanggal menjadi objek Date, lalu format kembali
-                        val dateObject = dateFormat.parse(transaction.date)
-                        val transactionDate = dateObject?.let { displayDateFormat.format(it) } ?: transaction.date
-
-                        if (transactionDate != lastDate) {
-                            items.add(DataItem.DateHeaderItem(transactionDate))
-                            lastDate = transactionDate
-                        }
-                        items.add(DataItem.TransactionItem(transaction))
-                    } catch (e: Exception) {
-                        Log.e("HomeViewModel", "Error parsing date for transaction: ${transaction.id}", e)
-                        // Jika ada error, tampilkan transaksi tanpa header tanggal untuk mencegah crash
-                        items.add(DataItem.TransactionItem(transaction))
-                    }
-                }
-                items
+            FilterType.WEEKLY -> {
+                val calendar = Calendar.getInstance()
+                val endDate = dateFormat.format(calendar.time)
+                calendar.add(Calendar.DAY_OF_YEAR, -6)
+                val startDate = dateFormat.format(calendar.time)
+                repository.getTransactionsBetweenDates(startDate, endDate, userId)
+            }
+            FilterType.MONTHLY_ALL -> {
+                repository.getAllTransactions(userId)
             }
         }
-    }
 
-    // --- Fungsi Aksi (Insert & Delete) ---
+        transactionsFlow.map { transactionsList ->
+            val items = mutableListOf<DataItem>()
+            var lastDate: String? = null
+            transactionsList.forEach { transaction ->
+                try {
+                    val dateObject = dateFormat.parse(transaction.date)
+                    val transactionDate = dateObject?.let { displayDateFormat.format(it) } ?: transaction.date
+
+                    if (transactionDate != lastDate) {
+                        items.add(DataItem.DateHeaderItem(transactionDate))
+                        lastDate = transactionDate
+                    }
+                    items.add(DataItem.TransactionItem(transaction))
+                } catch (e: Exception) {
+                    Log.e("HomeViewModel", "Error parsing date for transaction: ${transaction.id}", e)
+                    items.add(DataItem.TransactionItem(transaction))
+                }
+            }
+            items
+        }
+    }
 
     fun insert(transaction: Transaction) = viewModelScope.launch {
         repository.insert(transaction)
     }
 
-    /**
-     * [BARU] Fungsi untuk menghapus satu transaksi.
-     */
     fun delete(transaction: Transaction) = viewModelScope.launch {
         repository.delete(transaction)
     }
 
-    /**
-     * Memulai sinkronisasi real-time saat ViewModel dibuat.
-     */
     init {
-        if (userId != null) {
+        // [PERBAIKAN] Hanya sinkronkan jika bukan tamu
+        if (firebaseAuth.currentUser != null) {
             repository.startListeningForRemoteUpdates()
         }
     }

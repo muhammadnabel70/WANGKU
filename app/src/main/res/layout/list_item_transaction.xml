@@ -22,28 +22,45 @@
         app:tint="#007BFF"
         tools:srcCompat="@drawable/ic_launcher_background" />
 
+    <!-- [PERBAIKAN] Guidelines untuk menciptakan kolom yang stabil -->
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/guideline1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        app:layout_constraintGuide_percent="0.35" />
+
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/guideline2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        app:layout_constraintGuide_percent="0.65" />
 
     <TextView
         android:id="@+id/tv_title"
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="20dp"
-        android:layout_marginTop="12dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="8dp"
         android:textColor="@android:color/black"
         android:textSize="14sp"
         android:textStyle="bold"
+        android:maxLines="1"
+        android:ellipsize="end"
         app:layout_constraintStart_toEndOf="@id/iv_category_icon"
-        app:layout_constraintTop_toTopOf="@id/iv_category_icon"
-        tools:text="Makanan" />
+        app:layout_constraintEnd_toStartOf="@id/guideline1"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        tools:text="Savings" />
 
     <View
         android:id="@+id/divider1"
         android:layout_width="1dp"
         android:layout_height="0dp"
-        android:layout_marginStart="24dp"
         android:background="@drawable/line_vertical_divider"
+        app:layout_constraintStart_toStartOf="@id/guideline1"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toEndOf="@id/tv_title"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintHeight_percent="0.6" />
 
@@ -51,37 +68,41 @@
         android:id="@+id/tv_category_name"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginEnd="16dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp"
         android:gravity="center_horizontal"
         android:textSize="14sp"
+        android:maxLines="1"
+        android:ellipsize="end"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toStartOf="@id/divider2"
         app:layout_constraintStart_toEndOf="@id/divider1"
+        app:layout_constraintEnd_toStartOf="@id/divider2"
         app:layout_constraintTop_toTopOf="parent"
-        tools:text="Pantry" />
+        tools:text="gajian" />
 
     <View
         android:id="@+id/divider2"
         android:layout_width="1dp"
         android:layout_height="0dp"
-        android:layout_marginEnd="16dp"
         android:background="@drawable/line_vertical_divider"
+        app:layout_constraintStart_toStartOf="@id/guideline2"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toStartOf="@id/tv_amount"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintHeight_percent="0.6"/>
 
     <TextView
         android:id="@+id/tv_amount"
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:gravity="end"
         android:textColor="#FF0000"
         android:textSize="16sp"
         android:textStyle="bold"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@id/divider2"
         app:layout_constraintTop_toTopOf="parent"
-        tools:text="-$100,00" />
+        tools:text="Rp1.000.000" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -22,6 +22,7 @@ import com.github.mikephil.charting.data.BarData
 import com.github.mikephil.charting.data.BarDataSet
 import com.github.mikephil.charting.data.BarEntry
 import com.github.mikephil.charting.formatter.IndexAxisValueFormatter
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
@@ -37,8 +38,9 @@ class AnalysisFragment : Fragment() {
         AnalysisViewModelFactory(app.repository, app.firebaseAuth)
     }
 
-    private val currencyFormatter: NumberFormat =
-        NumberFormat.getCurrencyInstance(Locale("in", "ID"))
+    private val currencyFormatter: NumberFormat = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("id-ID")).apply {
+        maximumFractionDigits = 0
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -68,56 +70,32 @@ class AnalysisFragment : Fragment() {
     }
 
     private fun setupFilterChips() {
-        binding.chipMonthly.isChecked = true // Atur default
-
-        binding.chipGroupFilter.setOnCheckedStateChangeListener { group, checkedIds ->
+        binding.chipMonthly.isChecked = true
+        binding.chipGroupFilter.setOnCheckedStateChangeListener { _, checkedIds ->
             when (checkedIds.firstOrNull()) {
-                R.id.chip_daily -> {
-                    analysisViewModel.setFilter(AnalysisFilterType.DAILY)
-                }
-                R.id.chip_weekly -> {
-                    analysisViewModel.setFilter(AnalysisFilterType.WEEKLY)
-                }
-                R.id.chip_monthly -> {
-                    analysisViewModel.setFilter(AnalysisFilterType.MONTHLY)
-                }
-                R.id.chip_yearly -> { // FIX: Changed from chip_year
-                    analysisViewModel.setFilter(AnalysisFilterType.YEARLY)
-                }
+                R.id.chip_daily -> analysisViewModel.setFilter(AnalysisFilterType.DAILY)
+                R.id.chip_weekly -> analysisViewModel.setFilter(AnalysisFilterType.WEEKLY)
+                R.id.chip_monthly -> analysisViewModel.setFilter(AnalysisFilterType.MONTHLY)
+                R.id.chip_yearly -> analysisViewModel.setFilter(AnalysisFilterType.YEARLY)
             }
         }
     }
 
-    /**
-     * "Mendengarkan" data dari ViewModel
-     */
     private fun observeViewModel() {
-
-        // --- Observer untuk Header DAN Total Bawah ---
-
+        // [PERBAIKAN] Menggabungkan semua flow untuk header
         viewLifecycleOwner.lifecycleScope.launch {
-            analysisViewModel.totalBalance.collect { balance ->
-                binding.headerLayout.tvTotalBalanceAmount.text = formatCurrency(balance)
+            combine(
+                analysisViewModel.totalBalance,
+                analysisViewModel.totalIncome,
+                analysisViewModel.totalExpense
+            ) { balance, income, expense ->
+                Triple(balance ?: 0.0, income ?: 0.0, expense ?: 0.0)
+            }.collect { (balance, income, expense) ->
+                updateHeaderUI(balance, income, expense)
             }
         }
 
-        viewLifecycleOwner.lifecycleScope.launch {
-            analysisViewModel.totalExpense.collect { expense ->
-                val expenseValue = expense ?: 0.0
-                val formattedExpense = formatCurrency(expenseValue)
-
-                binding.headerLayout.tvTotalExpenseAmount.text = "-${formattedExpense}"
-                binding.tvTotalExpense.text = formattedExpense // FIX: Changed from tvBottomExpenseTotal
-            }
-        }
-
-        viewLifecycleOwner.lifecycleScope.launch {
-            analysisViewModel.totalIncome.collect { income ->
-                val incomeValue = income ?: 0.0
-                binding.tvTotalIncome.text = formatCurrency(incomeValue) // FIX: Changed from tvBottomIncomeTotal
-            }
-        }
-
+        // Observer untuk data chart (tidak diubah)
         viewLifecycleOwner.lifecycleScope.launch {
             analysisViewModel.chartData.collect { data ->
                 if (data.isNotEmpty()) {
@@ -127,6 +105,28 @@ class AnalysisFragment : Fragment() {
                     binding.barChart.invalidate()
                 }
             }
+        }
+    }
+    
+    // [BARU] Fungsi untuk memperbarui semua UI di header
+    private fun updateHeaderUI(balance: Double, income: Double, expense: Double) {
+        binding.headerLayout.tvTotalBalanceAmount.text = formatCurrency(balance)
+        binding.headerLayout.tvTotalExpenseAmount.text = "-${formatCurrency(expense)}"
+        binding.tvTotalIncome.text = formatCurrency(income)
+        binding.tvTotalExpense.text = formatCurrency(expense)
+
+        val percentage = if (income > 0) (expense / income * 100).toInt() else 0
+        binding.headerLayout.progressBar.progress = percentage
+        binding.headerLayout.tvProgressLabel.text = getIncomeSpendingMessage(percentage)
+    }
+
+    // [BARU] Fungsi untuk pesan dinamis
+    private fun getIncomeSpendingMessage(percentage: Int): String {
+        return "$percentage% Of Your Income, " + when {
+            percentage > 100 -> "This is not good."
+            percentage > 75 -> "Looks a bit high."
+            percentage > 50 -> "Looks acceptable."
+            else -> "Looks Good."
         }
     }
 
@@ -160,7 +160,6 @@ class AnalysisFragment : Fragment() {
     }
 
     private fun updateGroupedBarChart(data: List<ChartDataEntry>) {
-
         val incomeEntries = ArrayList<BarEntry>()
         val expenseEntries = ArrayList<BarEntry>()
         val labels = ArrayList<String>()
@@ -220,7 +219,7 @@ class AnalysisFragment : Fragment() {
     }
 
     private fun formatCurrency(amount: Double): String {
-        return currencyFormatter.format(amount).replace(",00", "")
+        return currencyFormatter.format(amount)
     }
 
     override fun onDestroyView() {

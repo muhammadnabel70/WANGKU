@@ -5,12 +5,12 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.EditText
 import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
-import com.bumptech.glide.Glide // [BARU] Import Glide
+import com.bumptech.glide.Glide
+import com.example.wangku.EditProfileActivity
 import com.example.wangku.LoginActivity
 import com.example.wangku.R
 import com.example.wangku.SettingsActivity
@@ -20,7 +20,6 @@ import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.UserProfileChangeRequest
 
 class ProfileFragment : Fragment() {
 
@@ -59,8 +58,10 @@ class ProfileFragment : Fragment() {
             showLogoutConfirmationDialog()
         }
 
+        // [PERBAIKAN] Buka EditProfileActivity saat tombol Edit Profile diklik
         binding.btnEditProfile.setOnClickListener {
-            showEditNameDialog()
+            val intent = Intent(activity, EditProfileActivity::class.java)
+            startActivity(intent)
         }
 
         binding.btnSetting.setOnClickListener {
@@ -83,62 +84,17 @@ class ProfileFragment : Fragment() {
             binding.tvProfileName.text = user.displayName ?: "User"
             binding.tvProfileId.text = user.email
 
-            // [PERBAIKAN] Load foto profil jika URL tersedia
             if (user.photoUrl != null) {
                 Glide.with(this)
                     .load(user.photoUrl)
-                    .placeholder(R.drawable.ic_profile) // Gambar default saat loading
-                    .error(R.drawable.ic_profile)       // Gambar default jika gagal load
+                    .placeholder(R.drawable.ic_profile)
+                    .error(R.drawable.ic_profile)
                     .into(binding.ivProfilePicture)
             }
         } else {
             binding.tvProfileName.text = "Guest"
             binding.tvProfileId.text = ""
         }
-    }
-
-    private fun showEditNameDialog() {
-        val user = firebaseAuth.currentUser ?: return
-
-        val builder = MaterialAlertDialogBuilder(requireContext())
-        builder.setTitle("Edit Name")
-
-        val dialogView = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_edit_name, null)
-        builder.setView(dialogView)
-
-        val nameEditText = dialogView.findViewById<EditText>(R.id.et_name)
-        nameEditText.setText(user.displayName)
-
-        builder.setPositiveButton("Save") { dialog, _ ->
-            val newName = nameEditText.text.toString().trim()
-            if (newName.isEmpty()) {
-                Toast.makeText(requireContext(), "Name cannot be empty", Toast.LENGTH_SHORT).show()
-            } else {
-                updateProfileName(newName)
-                dialog.dismiss()
-            }
-        }
-        builder.setNegativeButton("Cancel") { dialog, _ ->
-            dialog.cancel()
-        }
-        builder.show()
-    }
-
-    private fun updateProfileName(newName: String) {
-        val user = firebaseAuth.currentUser ?: return
-        val profileUpdates = UserProfileChangeRequest.Builder()
-            .setDisplayName(newName)
-            .build()
-
-        user.updateProfile(profileUpdates)
-            .addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    Toast.makeText(requireContext(), "Profile name updated!", Toast.LENGTH_SHORT).show()
-                    binding.tvProfileName.text = newName
-                } else {
-                    Toast.makeText(requireContext(), "Failed to update name: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
-                }
-            }
     }
 
     private fun showLogoutConfirmationDialog() {

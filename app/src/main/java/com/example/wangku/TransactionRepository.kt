@@ -9,6 +9,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import java.util.UUID
 
 class TransactionRepository(
     private val transactionDao: TransactionDao,
@@ -22,88 +23,84 @@ class TransactionRepository(
 
     // --- Operasi MENULIS (Write) ---
 
-    /**
-     * Menyimpan transaksi baru ke Firestore dan Room.
-     */
     suspend fun insert(transaction: Transaction) {
         val userId = currentUserId
-        if (userId == null) {
-            Log.e("TransactionRepo", "User not logged in, cannot insert transaction")
-            return
-        }
 
-        try {
-            // Buat dokumen baru di Firestore
-            val documentRef = firestore.collection("users").document(userId)
-                .collection("transactions").document() // Buat ID unik
+        // Menangani logika penyimpanan untuk pengguna yang masuk dan tamu
+        if (userId != null) {
+            // Pengguna yang masuk: simpan ke Firestore dan Room
+            try {
+                val documentRef = firestore.collection("users").document(userId)
+                    .collection("transactions").document()
+                transaction.id = documentRef.id
+                transaction.userId = userId
+                transaction.timestamp = System.currentTimeMillis()
 
-            // Set ID, userId, dan timestamp di objek transaksi
-            transaction.id = documentRef.id // Ambil ID unik dari Firestore
-            transaction.userId = userId
-            transaction.timestamp = System.currentTimeMillis() // Selalu set timestamp baru saat insert
+                documentRef.set(transaction).await()
+                transactionDao.insertOrReplace(transaction)
+            } catch (e: Exception) {
+                Log.e("TransactionRepo", "Error inserting transaction for logged-in user", e)
+            }
+        } else {
+            // Mode Tamu: hanya simpan ke Room
+            try {
+                transaction.id = UUID.randomUUID().toString() // Buat ID unik untuk tamu
+                transaction.userId = "GUEST_USER" // Gunakan ID statis untuk tamu
+                transaction.timestamp = System.currentTimeMillis()
 
-            // Simpan ke Firestore (Cloud)
-            documentRef.set(transaction).await()
-
-            // Simpan ke Room (Lokal)
-            transactionDao.insertOrReplace(transaction)
-
-        } catch (e: Exception) {
-            Log.e("TransactionRepo", "Error inserting transaction", e)
+                transactionDao.insertOrReplace(transaction)
+            } catch (e: Exception) {
+                Log.e("TransactionRepo", "Error inserting transaction for guest user", e)
+            }
         }
     }
 
-    /**
-     * [BARU] Menghapus satu transaksi dari Room dan Firestore.
-     */
     suspend fun delete(transaction: Transaction) {
         val userId = currentUserId
-        if (userId == null || transaction.id.isEmpty()) {
-            Log.e("TransactionRepo", "Cannot delete, user or transaction ID is missing")
-            return
-        }
 
-        try {
-            // 1. Hapus dari Firestore (Cloud)
-            firestore.collection("users").document(userId)
-                .collection("transactions").document(transaction.id)
-                .delete()
-                .await()
-
-            // 2. Hapus dari Room (Lokal)
-            transactionDao.delete(transaction)
-
-        } catch (e: Exception) {
-            Log.e("TransactionRepo", "Error deleting transaction", e)
+        // Logika penghapusan untuk pengguna yang masuk dan tamu
+        if (userId != null) {
+            if (transaction.id.isEmpty()) return
+            try {
+                firestore.collection("users").document(userId)
+                    .collection("transactions").document(transaction.id)
+                    .delete().await()
+                transactionDao.delete(transaction)
+            } catch (e: Exception) {
+                Log.e("TransactionRepo", "Error deleting transaction for logged-in user", e)
+            }
+        } else {
+            // Mode Tamu: hanya hapus dari Room
+            try {
+                transactionDao.delete(transaction)
+            } catch (e: Exception) {
+                Log.e("TransactionRepo", "Error deleting transaction for guest user", e)
+            }
         }
     }
 
-    /**
-     * Menghapus semua data pengguna saat logout.
-     */
     suspend fun clearAllTransactionsForUser() {
-        val userId = currentUserId ?: return
+        val userId = currentUserId ?: "GUEST_USER" // Hapus data tamu jika tidak ada pengguna yang masuk
 
-        // 1. Hapus dari Room
         transactionDao.deleteAllTransactionsForUser(userId)
 
-        // 2. Hapus dari Firestore (Batch delete)
-        try {
-            val querySnapshot = firestore.collection("users").document(userId)
-                .collection("transactions").get().await()
-
-            val batch = firestore.batch()
-            for (document in querySnapshot.documents) {
-                batch.delete(document.reference)
+        // Hanya hapus dari Firestore jika pengguna bukan tamu
+        if (userId != "GUEST_USER") {
+            try {
+                val querySnapshot = firestore.collection("users").document(userId)
+                    .collection("transactions").get().await()
+                val batch = firestore.batch()
+                for (document in querySnapshot.documents) {
+                    batch.delete(document.reference)
+                }
+                batch.commit().await()
+            } catch (e: Exception) {
+                Log.e("TransactionRepo", "Error deleting transactions from Firestore", e)
             }
-            batch.commit().await()
-        } catch (e: Exception) {
-            Log.e("TransactionRepo", "Error deleting transactions from Firestore", e)
         }
     }
 
     // --- Operasi MEMBACA (Read) ---
-    // Fungsi-fungsi ini HANYA membaca dari Room (database lokal).
 
     fun getAllTransactions(userId: String): Flow<List<Transaction>> {
         return transactionDao.getAllTransactions(userId)
@@ -137,14 +134,10 @@ class TransactionRepository(
         return transactionDao.getSummaryByYear(userId)
     }
 
-    /**
-     * Memulai "mendengarkan" perubahan di Firestore secara real-time.
-     */
     fun startListeningForRemoteUpdates() {
         val userId = currentUserId
         if (userId == null) {
-            Log.e("TransactionRepo", "No user to listen for updates.")
-            return
+            return // Jangan dengarkan pembaruan Firestore untuk tamu
         }
 
         firestore.collection("users").document(userId)
@@ -163,19 +156,15 @@ class TransactionRepository(
                             val transaction = docChange.document.toObject<Transaction>()
                             transaction.id = docChange.document.id
 
-                            // [PERBAIKAN] Jika data dari Firestore tidak punya timestamp,
-                            // setel ke waktu sinkronisasi saat ini.
                             if (transaction.timestamp == 0L) {
                                 transaction.timestamp = System.currentTimeMillis()
                             }
 
                             when (docChange.type) {
-                                // Data baru atau berubah di cloud
                                 com.google.firebase.firestore.DocumentChange.Type.ADDED,
                                 com.google.firebase.firestore.DocumentChange.Type.MODIFIED -> {
                                     transactionDao.insertOrReplace(transaction)
                                 }
-                                // Data dihapus di cloud
                                 com.google.firebase.firestore.DocumentChange.Type.REMOVED -> {
                                     transactionDao.delete(transaction)
                                 }

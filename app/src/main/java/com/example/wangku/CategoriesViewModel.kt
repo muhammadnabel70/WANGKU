@@ -7,7 +7,6 @@ import com.example.wangku.TransactionRepository
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
 
 class CategoriesViewModel(
@@ -15,23 +14,17 @@ class CategoriesViewModel(
     private val firebaseAuth: FirebaseAuth
 ) : ViewModel() {
 
-    private val userId = firebaseAuth.currentUser?.uid
+    // [PERBAIKAN] Gunakan "GUEST_USER" jika tidak ada pengguna yang login
+    private val userId = firebaseAuth.currentUser?.uid ?: "GUEST_USER"
 
     // --- Data Saldo ---
-    val totalIncome: Flow<Double?> = if (userId == null) emptyFlow() else {
-        repository.getTotalIncome(userId)
-    }
-
-    val totalExpense: Flow<Double?> = if (userId == null) emptyFlow() else {
-        repository.getTotalExpense(userId)
-    }
+    val totalIncome: Flow<Double?> = repository.getTotalIncome(userId)
+    val totalExpense: Flow<Double?> = repository.getTotalExpense(userId)
 
     val totalBalance: Flow<Double> = combine(totalIncome, totalExpense) { income, expense ->
         (income ?: 0.0) - (expense ?: 0.0)
     }
 
-    // Fungsi ini tidak berubah. Repository yang akan menangani
-    // penambahan userId dan penyimpanan ke Firestore.
     fun insertTransaction(transaction: Transaction) = viewModelScope.launch {
         repository.insert(transaction)
     }

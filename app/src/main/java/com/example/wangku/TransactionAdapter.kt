@@ -14,12 +14,12 @@ import com.example.wangku.databinding.ListItemTransactionBinding
 import com.example.wangku.ui.home.DataItem
 import com.example.wangku.ui.home.DataItem.DateHeaderItem
 import com.example.wangku.ui.home.DataItem.TransactionItem
-import java.text.SimpleDateFormat
+import java.text.NumberFormat
 import java.util.Locale
-import java.lang.Exception
 
 class TransactionAdapter(
-    private val onItemLongClick: (Transaction) -> Unit // Lambda untuk long click
+    private val currencyFormatter: NumberFormat, // [BARU] Tambahkan formatter
+    private val onItemLongClick: (Transaction) -> Unit
 ) : ListAdapter<DataItem, RecyclerView.ViewHolder>(DataItemDiffCallback()) {
 
     companion object {
@@ -47,7 +47,7 @@ class TransactionAdapter(
                     parent,
                     false
                 )
-                TransactionViewHolder(binding, onItemLongClick) // Pass the long click listener
+                TransactionViewHolder(binding, onItemLongClick)
             }
             else -> throw IllegalArgumentException("Unknown viewType $viewType")
         }
@@ -66,9 +66,6 @@ class TransactionAdapter(
         }
     }
 
-    /**
-     * ViewHolder untuk menampilkan transaksi individual.
-     */
     inner class TransactionViewHolder(
         val binding: ListItemTransactionBinding,
         private val onItemLongClick: (Transaction) -> Unit
@@ -82,28 +79,24 @@ class TransactionAdapter(
 
             binding.apply {
                 tvTitle.text = transaction.title
-                // tvDate.text = formatDisplayDate(transaction.date) // Date is now in header
-                tvCategoryName.text = transaction.category
+                tvCategoryName.text = transaction.note // [PERUBAHAN] Tampilkan note di sini
 
                 ivCategoryIcon.setImageResource(
                     getDrawableIdByName(itemView.context, transaction.iconName)
                 )
 
                 if (transaction.type == TransactionType.INCOME) {
-                    tvAmount.text = "Rp${transaction.amount}" // TODO: Format mata uang
+                    tvAmount.text = currencyFormatter.format(transaction.amount)
                     val incomeColor = ContextCompat.getColor(itemView.context, R.color.blue_income)
                     tvAmount.setTextColor(incomeColor)
                 } else {
-                    tvAmount.text = "-Rp${transaction.amount}" // TODO: Format mata uang
-                    tvAmount.setTextColor(Color.RED) // Sebaiknya definisikan di colors.xml
+                    tvAmount.text = "-${currencyFormatter.format(transaction.amount)}"
+                    tvAmount.setTextColor(Color.RED)
                 }
             }
         }
     }
 
-    /**
-     * ViewHolder untuk menampilkan header tanggal.
-     */
     class DateHeaderViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         private val tvDateHeader: TextView = view.findViewById(R.id.tv_date_header)
 
@@ -112,23 +105,15 @@ class TransactionAdapter(
         }
     }
 
-    /**
-     * Helper function untuk mendapatkan ID drawable dari namanya (String).
-     */
     private fun getDrawableIdByName(context: Context, iconName: String): Int {
         return context.resources.getIdentifier(
-            iconName,         // Nama resource (misal: "ic_makanan")
-            "drawable",       // Tipe resource
-            context.packageName // Package aplikasi
-        )
-            .let { if (it == 0) R.drawable.ic_launcher_background else it } // Ganti dengan ikon default
+            iconName,
+            "drawable",
+            context.packageName
+        ).let { if (it == 0) R.drawable.ic_launcher_background else it }
     }
 }
 
-/**
- * DiffUtil: Menghitung perbedaan data agar RecyclerView tahu
- * item mana yang berubah, ditambah, atau dihapus (lebih efisien).
- */
 class DataItemDiffCallback : DiffUtil.ItemCallback<DataItem>() {
     override fun areItemsTheSame(oldItem: DataItem, newItem: DataItem): Boolean {
         return when {
@@ -139,6 +124,6 @@ class DataItemDiffCallback : DiffUtil.ItemCallback<DataItem>() {
     }
 
     override fun areContentsTheSame(oldItem: DataItem, newItem: DataItem): Boolean {
-        return oldItem == newItem // Data classes handle content equality automatically
+        return oldItem == newItem
     }
 }

@@ -13,14 +13,16 @@
         android:roundIcon="@mipmap/ic_logo"
         android:supportsRtl="true"
         android:theme="@style/Theme.WANGKU"
-        android:name=".WangKuApplication"> <activity
-        android:name=".LoginActivity"
-        android:exported="true">
-        <intent-filter>
-            <action android:name="android.intent.action.MAIN" />
-            <category android:name="android.intent.category.LAUNCHER" />
-        </intent-filter>
-    </activity>
+        android:name=".WangKuApplication">
+
+        <activity
+            android:name=".LoginActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
 
         <activity
             android:name=".MainActivity"
@@ -32,6 +34,12 @@
 
         <activity
             android:name=".SettingsActivity"
+            android:exported="false"
+            android:parentActivityName=".MainActivity" />
+
+        <!-- [PERBAIKAN] Menambahkan deklarasi EditProfileActivity -->
+        <activity
+            android:name=".EditProfileActivity"
             android:exported="false"
             android:parentActivityName=".MainActivity" />
 

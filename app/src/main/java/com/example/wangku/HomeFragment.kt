@@ -6,6 +6,7 @@ import android.os.Looper
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.Animation
 import android.view.animation.AnimationUtils
 import android.widget.Toast
 import androidx.fragment.app.Fragment
@@ -37,8 +38,10 @@ class HomeFragment : Fragment() {
         HomeViewModelFactory(app.repository, app.firebaseAuth)
     }
 
-    private val currencyFormatter: NumberFormat =
-        NumberFormat.getCurrencyInstance(Locale.forLanguageTag("id-ID"))
+    // [PERBAIKAN] Atur formatter agar tidak menampilkan desimal
+    private val currencyFormatter: NumberFormat = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("id-ID")).apply {
+        maximumFractionDigits = 0
+    }
 
     private val animationHandler = Handler(Looper.getMainLooper())
     private lateinit var shakeAnimation: Runnable
@@ -65,7 +68,7 @@ class HomeFragment : Fragment() {
 
     private fun setupLogoAnimation() {
         val shake = AnimationUtils.loadAnimation(context, R.anim.logo_shake)
-
+        shake.repeatCount = Animation.INFINITE
         shakeAnimation = Runnable {
             binding.ivLogo.startAnimation(shake)
             animationHandler.postDelayed(shakeAnimation, 2000) // Ulangi setiap 2 detik
@@ -74,10 +77,6 @@ class HomeFragment : Fragment() {
         animationHandler.post(shakeAnimation) // Mulai animasi pertama kali
     }
 
-
-    /**
-     * Mengambil info pengguna dari Firebase dan menampilkannya.
-     */
     private fun setupUserInfo() {
         val currentUser = firebaseAuth.currentUser
 
@@ -93,13 +92,8 @@ class HomeFragment : Fragment() {
         }
     }
 
-    /**
-     * Menyiapkan RecyclerView dan meneruskan lambda untuk 'onLongClick'.
-     */
     private fun setupRecyclerView() {
-        // Inisialisasi adapter dengan lambda untuk long-click
-        transactionAdapter = TransactionAdapter { transaction ->
-            // Saat item ditekan lama, panggil fungsi ini:
+        transactionAdapter = TransactionAdapter(currencyFormatter) { transaction ->
             showDeleteConfirmationDialog(transaction)
         }
 
@@ -109,16 +103,11 @@ class HomeFragment : Fragment() {
         }
     }
 
-    /**
-     * Menampilkan dialog konfirmasi (modern) sebelum menghapus item.
-     */
     private fun showDeleteConfirmationDialog(transaction: Transaction) {
-        // [PERBAIKAN UI] Gunakan MaterialAlertDialogBuilder
         MaterialAlertDialogBuilder(requireContext())
             .setTitle("Hapus Transaksi")
             .setMessage("Apakah Anda yakin ingin menghapus '${transaction.title}' senilai ${formatCurrency(transaction.amount)}?")
             .setPositiveButton("Hapus") { dialog, _ ->
-                // Panggil ViewModel untuk menghapus
                 homeViewModel.delete(transaction)
                 Toast.makeText(requireContext(), "Transaksi dihapus", Toast.LENGTH_SHORT).show()
                 dialog.dismiss()
@@ -129,17 +118,11 @@ class HomeFragment : Fragment() {
             .show()
     }
 
-    /**
-     * "Mendengarkan" (observe) data dari ViewModel.
-     * Termasuk logika untuk "Empty State".
-     */
     private fun observeViewModel() {
 
-        // 1. Observer untuk DAFTAR TRANSAKSI
         viewLifecycleOwner.lifecycleScope.launch {
             homeViewModel.allTransactions.collect { dataItems ->
 
-                // [LOGIKA EMPTY STATE BARU]
                 if (dataItems.isEmpty()) {
                     binding.rvTransactions.visibility = View.GONE
                     binding.tvEmptyState.visibility = View.VISIBLE
@@ -148,12 +131,10 @@ class HomeFragment : Fragment() {
                     binding.tvEmptyState.visibility = View.GONE
                 }
 
-                // Kirim daftar (walaupun kosong) ke adapter
                 transactionAdapter.submitList(dataItems)
             }
         }
 
-        // 2. Observer untuk TOTAL INCOME
         viewLifecycleOwner.lifecycleScope.launch {
             homeViewModel.totalIncome.collect { income ->
                 val incomeValue = income ?: 0.0
@@ -161,7 +142,6 @@ class HomeFragment : Fragment() {
             }
         }
 
-        // 3. Observer untuk TOTAL EXPENSE
         viewLifecycleOwner.lifecycleScope.launch {
             homeViewModel.totalExpense.collect { expense ->
                 val expenseValue = expense ?: 0.0
@@ -169,7 +149,6 @@ class HomeFragment : Fragment() {
             }
         }
 
-        // 4. Observer untuk TOTAL BALANCE
         viewLifecycleOwner.lifecycleScope.launch {
             homeViewModel.totalBalance.collect { balance ->
                 binding.tvTotalBalanceAmount.text = formatCurrency(balance)
@@ -177,9 +156,6 @@ class HomeFragment : Fragment() {
         }
     }
 
-    /**
-     * Menambahkan listener ke ChipGroup untuk memfilter daftar.
-     */
     private fun setupFilterChips() {
         binding.chipMonthly.isChecked = true
 
@@ -199,10 +175,10 @@ class HomeFragment : Fragment() {
     }
 
     /**
-     * Fungsi helper untuk format mata uang
+     * [PERBAIKAN] Fungsi helper untuk format mata uang tanpa .replace()
      */
     private fun formatCurrency(amount: Double): String {
-        return currencyFormatter.format(amount).replace(",00", "")
+        return currencyFormatter.format(amount)
     }
 
     override fun onDestroyView() {

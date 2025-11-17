@@ -64,7 +64,7 @@
             android:layout_marginStart="32dp"
             android:layout_marginTop="32dp"
             android:layout_marginEnd="32dp"
-            android:hint="Username Or Email"
+            android:hint="Email"
             app:boxBackgroundColor="#DFF7E2"
             app:boxCornerRadiusBottomEnd="16dp"
             app:boxCornerRadiusBottomStart="16dp"
