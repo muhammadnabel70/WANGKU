@@ -12,15 +12,6 @@ plugins {
 }
 
 android {
-    signingConfigs {
-        getByName("debug") {
-            storeFile =
-                file("C:\\Users\\muham\\OneDrive\\Documents\\3DMark\\KeyStore\\KeyStoreWangku")
-            storePassword = "Aswd1122"
-            keyAlias = "KeyWangku"
-            keyPassword = "Aswd1122"
-        }
-    }
     namespace = "com.example.wangku"
     compileSdk = 36
 
@@ -32,7 +23,6 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        signingConfig = signingConfigs.getByName("debug")
     }
 
     buildFeatures {
